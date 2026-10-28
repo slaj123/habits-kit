@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Habits</title>
+<meta name="description" content="Today's four habits, read from the apps themselves.">
+<meta name="theme-color" content="#F1ECE2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141311" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Habits">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<main id="app">
+
+  <section id="login" class="login" hidden>
+    <p class="eyebrow">Habits</p>
+    <h1 class="login-title">Four things,<br>every day.</h1>
+    <form id="login-form">
+      <label class="eyebrow" for="passcode">Passcode</label>
+      <input id="passcode" type="password" autocomplete="current-password" required>
+      <button type="submit" class="btn">Open</button>
+      <p id="login-msg" class="msg" role="alert"></p>
+    </form>
+  </section>
+
+  <section id="main" hidden>
+    <header class="top">
+      <span id="date" class="eyebrow"></span>
+      <span id="left" class="eyebrow"></span>
+    </header>
+
+    <p id="errors" class="banner" hidden></p>
+
+    <section class="todo" aria-labelledby="todo-h">
+      <div class="sec-head"><span id="todo-h" class="eyebrow">To-do</span></div>
+      <p id="todo-sum" class="sec-sum"></p>
+      <form id="todo-add" class="todo-add" autocomplete="off">
+        <input id="todo-text" type="text" maxlength="200" placeholder="Add a task" aria-label="New task" enterkeyhint="done">
+        <button type="submit" class="btn small">Add</button>
+      </form>
+      <ul id="todo-list" class="todo-list"></ul>
+    </section>
+
+    <div class="sec-head habits-head"><span class="eyebrow">Habits</span></div>
+    <p id="habits-sum" class="sec-sum"></p>
+
+    <section class="hero">
+      <div id="streak" class="streak">0</div>
+      <div class="hero-text">
+        <p id="streak-label" class="eyebrow">days running</p>
+      </div>
+    </section>
+
+    <nav class="daynav" aria-label="Choose a day">
+      <button type="button" id="day-prev" class="navbtn" aria-label="Previous day">‹</button>
+      <div class="daylabel"><span id="day-name"></span><span id="day-sum" class="eyebrow"></span></div>
+      <button type="button" id="day-next" class="navbtn" aria-label="Next day">›</button>
+    </nav>
+    <button type="button" id="day-today" class="btn small ghost today-btn" hidden>Back to today</button>
+
+    <ol id="ledger" class="ledger"></ol>
+
+    <section class="grid-wrap">
+      <div class="grid-head">
+        <span class="eyebrow">Last 30 days</span>
+        <span class="legend"><i class="c done"></i>done <i class="c miss"></i>missed</span>
+      </div>
+      <p id="grid-sum" class="sec-sum"></p>
+      <div id="grid" class="grid" role="img" aria-label="Last 30 days, one row per habit"></div>
+    </section>
+
+    <section class="vices">
+      <div class="grid-head">
+        <span class="eyebrow">Vices</span>
+        <span class="legend">tap for the day shown above</span>
+      </div>
+      <p id="vice-sum" class="sec-sum">Locked.</p>
+      <form id="vice-lock" class="vice-lock" autocomplete="off">
+        <input id="vice-pass" type="password" inputmode="text" autocomplete="off" aria-label="Vices passcode" placeholder="Passcode">
+        <button type="submit" class="btn small">Unlock</button>
+        <p id="vice-msg" class="msg" role="alert"></p>
+      </form>
+      <div id="vice-open" hidden>
+        <ul id="vice-list" class="vice-list"></ul>
+        <div class="grid-head vgrid-head"><span class="eyebrow">Last 30 days</span><span class="legend"><i class="c vdid"></i>did it</span></div>
+        <div id="vice-grid" class="grid" role="img" aria-label="Vices, last 30 days"></div>
+        <button type="button" id="vice-relock" class="btn small ghost relock">Lock</button>
+      </div>
+    </section>
+
+    <details class="settings" id="settings">
+      <summary class="eyebrow">Settings</summary>
+
+      <div class="set-row">
+        <div>
+          <p class="set-name">Nudge</p>
+          <p id="push-note" class="set-note"></p>
+        </div>
+        <div class="set-ctl">
+          <select id="nudge-hour" aria-label="Nudge time"></select>
+          <button id="push-btn" class="btn small" type="button">Turn on</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <div>
+          <p class="set-name">Test nudge</p>
+          <p class="set-note">Sends what's open right now to every device.</p>
+        </div>
+        <button id="push-test" class="btn small ghost" type="button">Send</button>
+      </div>
+      <div class="set-row">
+        <div>
+          <p class="set-name">Time zone</p>
+          <p id="tz-note" class="set-note"></p>
+        </div>
+        <button id="tz-btn" class="btn small ghost" type="button" hidden>Use this phone's</button>
+      </div>
+      <div class="set-row">
+        <div>
+          <p class="set-name">Garden</p>
+          <p id="garden-note" class="set-note"></p>
+        </div>
+        <button id="garden-btn" class="btn small ghost" type="button"></button>
+      </div>
+      <div class="set-row">
+        <div>
+          <p class="set-name">Screen time Shortcut</p>
+          <p class="set-note">Copies the key for the Shortcut's X-Ingest-Secret header.</p>
+        </div>
+        <button id="st-key" class="btn small ghost" type="button">Copy key</button>
+      </div>
+      <div class="set-row">
+        <div>
+          <p class="set-name">Tracking since</p>
+          <p id="start-note" class="set-note"></p>
+        </div>
+        <button id="logout" class="btn small ghost" type="button">Sign out</button>
+      </div>
+      <p id="set-msg" class="msg" role="status"></p>
+    </details>
+  </section>
+
+</main>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

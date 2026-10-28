@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "habits",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // Hourly; the Worker sends the nudge only in the hour that is 8 p.m. where you are.
+  "triggers": { "crons": ["0 * * * *"] },
+  "vars": {
+    // Contact the push services see on each nudge (required by VAPID).
+    "VAPID_SUBJECT": "mailto:you@example.com",
+    // Public half of the push key pair (safe to publish). The private half is
+    // the secret VAPID_PRIVATE_JWK.
+    "VAPID_PUBLIC_KEY": "REPLACE_WITH_VAPID_PUBLIC_KEY"
+  },
+  "d1_databases": [
+    // This app's own small store: settings, push subscriptions, nudge log, login lockout.
+    { "binding": "DB", "database_name": "habits", "database_id": "REPLACE_WITH_HABITS_DB_ID", "migrations_dir": "migrations" },
+    // The four apps it watches. This Worker only ever runs SELECTs on them.
+    { "binding": "FAMILY_DB", "database_name": "family-map", "database_id": "REPLACE_WITH_FAMILY_MAP_DB_ID" },
+    { "binding": "GARDEN_DB", "database_name": "the-garden", "database_id": "REPLACE_WITH_GARDEN_DB_ID" },
+    { "binding": "NIGHTS_DB", "database_name": "thousand-nights", "database_id": "REPLACE_WITH_THOUSAND_NIGHTS_DB_ID" },
+    { "binding": "WORKOUT_DB", "database_name": "workout-log", "database_id": "REPLACE_WITH_WORKOUT_LOG_DB_ID" }
+  ]
+  // Secrets (never in this file), set with `wrangler secret put`:
+  //   HABITS_PASSCODE    the app's passcode (12+ characters), you set it
+  //   SESSION_SECRET     random, 32+ characters; signs the login cookie
+  //   VAPID_PRIVATE_JWK  private push key (JSON); matches VAPID_PUBLIC_KEY
+  //   DAILYLOG_INGEST_SECRET  random, 24+ characters; the voice-memo Worker
+  //                      sends it (as HABITS_INGEST_SECRET) on each Daily Log
+  //   SCREENTIME_INGEST_SECRET  random, 24+ characters; the iPhone Screen Time
+  //                      Shortcut sends it as X-Ingest-Secret
+  // Locally they come from .dev.vars.
+}
