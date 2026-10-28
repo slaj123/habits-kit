@@ -238,3 +238,8 @@ select {
 .todo-item.u3 .ttext { font-weight: 600; }
 .todo-item.u3 .tage, .todo-item.u3 .tbox::before { color: var(--rust); }
 .todo-item.u3 .tage { color: var(--rust); }
+
+.habit-toggles { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+.habit-toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; min-height: 32px; }
+.habit-toggle input { width: 18px; height: 18px; accent-color: var(--ink); }
+#family-target { width: 64px; padding: 8px; font: inherit; border: 1px solid var(--rule); border-radius: 8px; background: transparent; color: inherit; }

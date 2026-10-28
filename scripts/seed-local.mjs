@@ -5,6 +5,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdirSync, writeFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import SETUP from "../src/setup.js";
 
 const here = fileURLToPath(new URL("..", import.meta.url));
 const wrangler = fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url));
@@ -40,7 +41,10 @@ for (let o = -13; o <= 0; o++) {
 
 // Each companion app's tables, from the copies the tests use.
 const migrations = { "family-map": "family", "the-garden": "garden", "thousand-nights": "nights", "workout-log": "workout" };
+// Only the apps whose habits are on (their databases are the ones bound in wrangler.jsonc).
+const habitOf = { "family-map": "family", "the-garden": "garden", "thousand-nights": "nights", "workout-log": "workout" };
 for (const [db, app] of Object.entries(migrations)) {
+  if (!SETUP.habits.includes(habitOf[db])) continue;
   const dir = fileURLToPath(new URL(`../test/migrations/${app}/`, import.meta.url));
   for (const f of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
     try { run("d1", "execute", db, "--local", "--file", dir + f); } catch { /* already applied */ }

@@ -2,7 +2,7 @@
 
 A one-page daily habit tracker that fills itself in. You never tick a box: it reads your other apps and shows what you've done today, keeps a streak, and sends one push notification in the evening if anything is still open.
 
-This is a **setup kit** that pairs with four other kits. Deploy the ones you want first, then point Habits at their databases:
+This is a **setup kit** that pairs with the other kits. **You choose which habits count**, so use one app or all five. Deploy the ones you want first; Habits reads their databases:
 
 | Habit | Reads from | Done when |
 | --- | --- | --- |
@@ -12,7 +12,7 @@ This is a **setup kit** that pairs with four other kits. Deploy the ones you wan
 | Workout | [workout-log](https://github.com/slaj123/workout-log) | At least one session is logged |
 | Daily Log | [voice-memo-journal](https://github.com/slaj123/voice-memo-journal) | A Daily Log voice memo arrived (one recorded before noon counts for the day before) |
 
-A day runs until 3 a.m. in your time zone, so staying up late still counts. The streak breaks on any miss. In Settings, **I'm out of people** retires the Garden habit from that day on.
+A day runs until 3 a.m. in your time zone, so staying up late still counts. The streak breaks on any miss of a habit you've turned on. Turn habits on or off any time in Settings. In Settings, **I'm out of people** retires the Garden habit from that day on.
 
 It also has:
 - a small to-do list;
@@ -35,59 +35,43 @@ npm install
 npm test
 ```
 
-## 2. Try it locally with fake data
+## 2. Make it yours
 
-Create `.dev.vars` (git-ignored):
-
-```
-HABITS_PASSCODE=local-test-passcode
-SESSION_SECRET=any-random-string-at-least-32-characters-long
-VICES_PASSCODE=another-local-passcode
+```bash
+npm run setup
 ```
 
-Fill the local databases with two weeks of made-up activity, then start it:
+It asks:
+- which habits count;
+- your time zone and nudge hour;
+- your family target and your Family Map id (if you track Family);
+- each app's link;
+- each app's database id (run `npx wrangler d1 list` to see them, or leave them blank for now);
+- your email for push notifications.
+
+Then it:
+- saves your answers in `setup.json` (git-ignored);
+- writes `src/setup.js`;
+- binds **only the databases for your chosen habits** in `wrangler.jsonc`;
+- creates your push-notification keys in `private/` (git-ignored);
+- with local testing on, writes `.dev.vars` with random local passcodes.
+
+Try it with fake data:
 
 ```bash
 npm run seed
 npm run dev
 ```
 
-Open http://localhost:8787.
+Open http://localhost:8787 and log in with the passcode in `.dev.vars`.
 
-## 3. Connect your apps
+**Change it later:** in the app, open **Settings** to switch habits on or off, change the family target, nudge hour or time zone. Only apps bound in `wrangler.jsonc` can be switched on; rerun `npm run setup` to connect another.
 
-Each habit needs the D1 database of the app it reads. List your databases and their ids:
+**Set up with Claude Code:** open this folder in [Claude Code](https://claude.com/claude-code) and type `/setup`. It finds your databases with you, applies everything, and walks you through deploying.
 
-```bash
-npx wrangler login
-npx wrangler d1 list
-```
+## 3. Deploy
 
-In `wrangler.jsonc`, replace each `REPLACE_WITH_..._DB_ID` with the matching id. If you don't use one of the apps, still create an empty database for it (`npx wrangler d1 create <name>`), so the binding exists. That habit will simply never be done.
-
-In `public/app.js`, set the URLs in `APPS` so each row links to its app.
-
-**Family habit:** only memories added by your person id count. The Worker uses `const ME = "me"` in `src/worker.js`. Make sure your row in the Family Map `people` table has id `me`, or change `ME` to your id.
-
-## 4. Push notification keys
-
-Web Push needs a key pair. Generate one:
-
-```bash
-node -e "const c=require('crypto');const k=c.generateKeyPairSync('ec',{namedCurve:'prime256v1'});console.log('VAPID_PUBLIC_KEY='+k.publicKey.export({format:'der',type:'spki'}).subarray(-65).toString('base64url'));console.log('VAPID_PRIVATE_JWK='+JSON.stringify(k.privateKey.export({format:'jwk'})))"
-```
-
-- Paste the public key into `VAPID_PUBLIC_KEY` in `wrangler.jsonc`. It is safe to publish.
-- Set `VAPID_SUBJECT` to `mailto:` plus your email. Push services use it to contact you about problems.
-- Keep the private key for step 5. Never commit it.
-
-## 5. Deploy
-
-1. Create this app's own database and its tables:
-   ```bash
-   npx wrangler d1 create habits
-   ```
-   Put the id into the first entry in `wrangler.jsonc`, then:
+1. Create this app's own database if you haven't (`npx wrangler d1 create habits`). Put its id in setup, or paste it into `wrangler.jsonc`. Then create its tables:
    ```bash
    npx wrangler d1 migrations apply habits --remote
    ```
@@ -102,10 +86,10 @@ node -e "const c=require('crypto');const k=c.generateKeyPairSync('ec',{namedCurv
    ```
    - `HABITS_PASSCODE`: 12 or more characters.
    - `SESSION_SECRET`: 32 or more random characters.
-   - `VAPID_PRIVATE_JWK`: the whole JSON line from step 4.
-   - The two ingest secrets: 24 or more random characters each.
+   - `VAPID_PRIVATE_JWK`: paste the single line from `private/vapid-private.jwk.json`.
+   - Ingest secrets: 24 or more random characters each.
 
-   To generate a random value:
+   Random values:
    ```bash
    node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
    ```
@@ -123,8 +107,8 @@ On iPhone, open the URL in Safari, tap **Share**, then **Add to Home Screen**. O
 
 ## Changing things
 
-- **Time zone and nudge hour:** in the app's Settings. Defaults are in `DEFAULTS` in `src/habits.js`.
-- **Family target** (memories per day): `familyTarget` in `DEFAULTS` in `src/habits.js`.
+- **Which habits count, family target, time zone, nudge hour:** the app's Settings.
+- **Connect another app:** rerun `npm run setup` (it rebinds `wrangler.jsonc`), then `npm run deploy`.
 - **The cut-back list:** edit `VICES` in `src/habits.js`, `VICE_ROWS` in `public/app.js`, and the `CHECK` list in `migrations/0003_vices.sql` together.
 - **Redeploy:** `npm run deploy`.
 

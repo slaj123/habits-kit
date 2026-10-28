@@ -90,6 +90,20 @@ assert.ok(!r.body.days.at(-1).garden.required);
 const back = await call("PATCH", "/api/settings", { gardenRetired: false });
 assert.strictEqual(back.body.settings.gardenRetiredFrom, null);
 assert.strictEqual((await call("PATCH", "/api/settings", { nudgeHour: 21 })).body.settings.nudgeHour, 21);
+
+// Which habits count: off ones aren't required, unconnected apps can't be on, never zero.
+let hs = await call("PATCH", "/api/settings", { habits: ["workout", "nights", "bogus"] });
+assert.deepStrictEqual(hs.body.settings.habits, ["nights", "workout"]);
+assert.ok(!hs.body.days.at(-1).family.required && hs.body.days.at(-1).workout.required);
+assert.ok(hs.body.days.at(-1).open.every((h) => ["nights", "workout"].includes(h)));
+assert.strictEqual((await call("PATCH", "/api/settings", { habits: [] })).status, 400);
+assert.strictEqual((await call("PATCH", "/api/settings", { familyTarget: 0 })).status, 400);
+assert.strictEqual((await call("PATCH", "/api/settings", { familyTarget: 3 })).body.settings.familyTarget, 3);
+const noGarden = { ...env, GARDEN_DB: undefined };
+const st2 = await worker.fetch(new Request("https://habits.test/api/status", { headers: { Cookie: cookie } }), noGarden);
+const s2 = await st2.json();
+assert.ok(!s2.settings.available.includes("garden") && !s2.settings.habits.includes("garden"));
+await call("PATCH", "/api/settings", { habits: ["family", "garden", "nights", "workout", "dailylog"], familyTarget: 5 });
 await call("PATCH", "/api/settings", { nudgeHour: 20 });
 
 // Push subscriptions: only real push services, only well-formed keys.

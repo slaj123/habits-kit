@@ -9,8 +9,9 @@
 // Lock: copied from the Garden. One passcode (HABITS_PASSCODE secret), a
 // signed HttpOnly cookie good for a year, 5 misses/IP/15 min, 30/hour overall.
 
-import { ledger, localDay, localHour, addDays, validTz, nudgeText, DEFAULTS, VICES, VICE_DAYS, viceDay, viceSummary, eveningOf, todoList, dayOf } from "./habits.js";
+import { HABITS, ledger, localDay, localHour, addDays, validTz, nudgeText, DEFAULTS, VICES, VICE_DAYS, viceDay, viceSummary, eveningOf, todoList, dayOf } from "./habits.js";
 import { sendPush } from "./webpush.js";
+import SETUP from "./setup.js";
 
 const MAX_BODY = 20_000;
 const COOKIE = "habits_session";
@@ -21,7 +22,10 @@ const MIN_PASSCODE = 12;
 const HISTORY_DAYS = 400; // enough for any streak to show its true length
 const SHOW_DAYS = 90; // the page browses this far back; the grid shows the last 30
 // Your person id in the Family Map app: only memories you add count toward the family habit.
-const ME = "me";
+const ME = SETUP.me || "me";
+// The database each habit reads. A habit can only be turned on if its binding exists.
+const BINDING = { family: "FAMILY_DB", garden: "GARDEN_DB", nights: "NIGHTS_DB", workout: "WORKOUT_DB" };
+const available = (env) => HABITS.filter((h) => h === "dailylog" || env[BINDING[h]]);
 
 // Push services a subscription may point at. Anything else is refused, so the
 // Worker can't be made to POST to an arbitrary address.
@@ -91,7 +95,7 @@ async function status(env, now) {
   const settings = await loadSettings(env, now);
   const today = dayOf(now, settings.tz); // the day runs to 3 a.m.
   const from = addDays(today, -(HISTORY_DAYS - 1));
-  const { raw, errors } = await loadRaw(env, from);
+  const { raw, errors } = await loadRaw(env, from, settings.habits);
   const l = ledger(raw, settings, today, from);
   const subs = await env.DB.prepare("SELECT count(*) AS n FROM push_subs").first();
   const nudge = await env.DB.prepare("SELECT sent_at FROM nudges WHERE date = ?").bind(today).first();
@@ -109,9 +113,10 @@ async function status(env, now) {
 }
 
 // Each app is read on its own, so one broken source doesn't blank the page.
-async function loadRaw(env, from) {
+async function loadRaw(env, from, habits = HABITS) {
   const errors = [];
   const safe = async (name, fn, fallback) => {
+    if (!habits.includes(name)) return fallback; // turned off: don't read that app at all
     try { return await fn(); } catch (e) { console.error(name, e); errors.push(name); return fallback; }
   };
   const sinceIso = addDays(from, -1) + "T00:00:00Z";
@@ -364,7 +369,7 @@ export function parseMinutes(v) {
 async function loadSettings(env, now) {
   const { results } = await env.DB.prepare("SELECT name, value FROM settings").all();
   const s = Object.fromEntries(results.map((r) => [r.name, r.value]));
-  const tz = validTz(s.tz) ? s.tz : DEFAULTS.tz;
+  const tz = validTz(s.tz) ? s.tz : validTz(SETUP.timeZone) ? SETUP.timeZone : DEFAULTS.tz;
   let startDate = s.startDate;
   if (!startDate) {
     // The first time anything runs is day one of the tracker.
@@ -374,9 +379,13 @@ async function loadSettings(env, now) {
   return {
     tz,
     startDate,
-    nudgeHour: s.nudgeHour !== undefined ? Number(s.nudgeHour) : DEFAULTS.nudgeHour,
-    familyTarget: DEFAULTS.familyTarget,
+    nudgeHour: s.nudgeHour !== undefined ? Number(s.nudgeHour) : SETUP.nudgeHour ?? DEFAULTS.nudgeHour,
+    familyTarget: s.familyTarget !== undefined ? Number(s.familyTarget) : SETUP.familyTarget || DEFAULTS.familyTarget,
     gardenRetiredFrom: s.gardenRetiredFrom || null,
+    // Your choice (Settings, else setup.js), limited to apps that are actually connected.
+    habits: (s.habits ? JSON.parse(s.habits) : SETUP.habits || HABITS).filter((h) => available(env).includes(h)),
+    available: available(env),
+    urls: SETUP.urls || {},
   };
 }
 
@@ -394,6 +403,16 @@ async function patchSettings(request, env) {
     const h = body.nudgeHour;
     if (!Number.isInteger(h) || h < 0 || h > 23) return json({ error: "bad hour" }, 400);
     set("nudgeHour", h);
+  }
+  if ("familyTarget" in body) {
+    const t = body.familyTarget;
+    if (!Number.isInteger(t) || t < 1 || t > 50) return json({ error: "bad target" }, 400);
+    set("familyTarget", t);
+  }
+  if ("habits" in body) {
+    const list = Array.isArray(body.habits) ? HABITS.filter((h) => body.habits.includes(h) && available(env).includes(h)) : [];
+    if (!list.length) return json({ error: "keep at least one habit on" }, 400);
+    writes.push(env.DB.prepare("INSERT OR REPLACE INTO settings (name, value) VALUES ('habits', ?)").bind(JSON.stringify(list)));
   }
   if ("gardenRetired" in body) {
     if (body.gardenRetired === true) {

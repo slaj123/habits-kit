@@ -1,15 +1,15 @@
 // Habits page. Everything shown comes from GET /api/status; nothing is stored here.
 
-// Your app URLs: each habit row links to the app it reads. Replace
-// <your-subdomain> with your workers.dev subdomain (and the Pages URL for Daily Log).
+// Links come from src/setup.js (urls), sent with the status. Habits you've turned off are hidden.
 const APPS = {
-  family: { name: "Family Map", url: "https://family-map.<your-subdomain>.workers.dev", short: "F" },
-  garden: { name: "The Garden", url: "https://the-garden.<your-subdomain>.workers.dev", short: "G" },
-  nights: { name: "1,000 Nights", url: "https://thousand-nights.<your-subdomain>.workers.dev", short: "N" },
-  workout: { name: "Workout", url: "https://workout-log.<your-subdomain>.workers.dev", short: "W" },
-  dailylog: { name: "Daily Log", url: "https://<your-journal>.pages.dev", short: "L" },
+  family: { name: "Family Map", url: "", short: "F" },
+  garden: { name: "The Garden", url: "", short: "G" },
+  nights: { name: "1,000 Nights", url: "", short: "N" },
+  workout: { name: "Workout", url: "", short: "W" },
+  dailylog: { name: "Daily Log", url: "", short: "L" },
 };
-const ORDER = ["family", "garden", "nights", "workout", "dailylog"];
+const ALL = ["family", "garden", "nights", "workout", "dailylog"];
+let ORDER = ALL; // the habits that are on, set from state.settings in render()
 
 const $ = (id) => document.getElementById(id);
 let state = null;
@@ -79,6 +79,8 @@ $("logout").addEventListener("click", async () => {
 
 function render() {
   const s = state;
+  ORDER = ALL.filter((h) => s.settings.habits.includes(h));
+  for (const h of ALL) APPS[h].url = (s.settings.urls || {})[h] || "";
   const today = s.days[s.days.length - 1];
   $("login").hidden = true;
   $("main").hidden = false;
@@ -159,14 +161,16 @@ function row(h, i, day, run, isToday) {
     const last = d.entries[d.entries.length - 1];
     const more = d.entries.length > 1 ? ` <span class="more">+${d.entries.length - 1} more</span>` : "";
     detail = last ? `Listen: <b>${esc(last.headline)}</b>${more}` : isToday ? "Record tonight's voice memo" : "No log recorded";
-    if (last) href = app.url + "/#e-" + encodeURIComponent(last.entry);
+    if (last && app.url) href = app.url + "/#e-" + encodeURIComponent(last.entry);
     mark = stateTag(d, isToday);
   } else {
     detail = d.done ? `<b>${esc(d.types.join(", "))}</b>` : isToday ? "No session logged yet" : "No session logged";
     mark = stateTag(d, isToday);
   }
   const showRun = run !== null && d.required;
-  return `<li class="${d.required || d.done ? "" : "off"}"><a href="${href}" target="_blank" rel="noopener">
+  // No link set in src/setup.js: the row is plain, not a link to nowhere.
+  const open = href ? `<a href="${esc(href)}" target="_blank" rel="noopener">` : `<a>`;
+  return `<li class="${d.required || d.done ? "" : "off"}">${open}
     <span class="idx">0${i + 1}</span>
     <span class="name">${app.name}</span>
     <span class="mark">${mark}<span class="run">${showRun ? run + "d" : "&nbsp;"}</span></span>
@@ -474,7 +478,24 @@ function renderSettings() {
   $("garden-btn").textContent = retired ? "Resume" : "I'm out of people";
 
   $("start-note").textContent = fmtDate(s.startDate);
+
+  // Which habits count. Only apps connected in wrangler.jsonc can be turned on.
+  $("habit-toggles").innerHTML = s.available.map((h) =>
+    `<label class="habit-toggle"><input type="checkbox" value="${h}"${s.habits.includes(h) ? " checked" : ""}> ${APPS[h].name}</label>`).join("");
+  $("family-target").value = s.familyTarget;
+  $("family-row").hidden = !s.habits.includes("family");
+  $("garden-row").hidden = !s.habits.includes("garden");
 }
+
+$("habit-toggles").addEventListener("change", () => {
+  const on = [...$("habit-toggles").querySelectorAll("input:checked")].map((i) => i.value);
+  if (!on.length) { setMsg("Keep at least one habit on."); return render(); }
+  saveSettings({ habits: on });
+});
+$("family-target").addEventListener("change", (e) => {
+  const t = Math.round(Number(e.target.value));
+  if (t >= 1 && t <= 50) saveSettings({ familyTarget: t }); else { setMsg("Pick 1 to 50."); render(); }
+});
 
 $("nudge-hour").addEventListener("change", (e) => saveSettings({ nudgeHour: Number(e.target.value) }));
 $("tz-btn").addEventListener("click", () => saveSettings({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone }));

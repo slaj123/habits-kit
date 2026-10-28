@@ -102,6 +102,20 @@
 
       <div class="set-row">
         <div>
+          <p class="set-name">Habits that count</p>
+          <p class="set-note">Turned-off habits are hidden and never break the streak.</p>
+          <div id="habit-toggles" class="habit-toggles"></div>
+        </div>
+      </div>
+      <div class="set-row" id="family-row">
+        <div>
+          <p class="set-name">Family target</p>
+          <p class="set-note">Memories to add per day.</p>
+        </div>
+        <input id="family-target" type="number" min="1" max="50" inputmode="numeric" aria-label="Family memories per day">
+      </div>
+      <div class="set-row">
+        <div>
           <p class="set-name">Nudge</p>
           <p id="push-note" class="set-note"></p>
         </div>
@@ -124,7 +138,7 @@
         </div>
         <button id="tz-btn" class="btn small ghost" type="button" hidden>Use this phone's</button>
       </div>
-      <div class="set-row">
+      <div class="set-row" id="garden-row">
         <div>
           <p class="set-name">Garden</p>
           <p id="garden-note" class="set-note"></p>

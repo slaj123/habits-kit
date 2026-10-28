@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "seed": "node scripts/seed-local.mjs",

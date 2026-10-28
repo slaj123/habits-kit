@@ -61,12 +61,13 @@ export function validTz(tz) {
 //   workout: [{ date, type }]
 //   dailylog: [{ entry, at, headline }]                 from this app's own DB
 // }
-// settings = { tz, startDate, gardenRetiredFrom, familyTarget }
+// settings = { tz, startDate, gardenRetiredFrom, familyTarget, habits }   habits: which ones count (default all)
 // Returns days oldest → newest from `from` to `today`, plus streaks.
 export function ledger(raw, settings, today, from) {
   const tz = settings.tz || DEFAULTS.tz;
   const target = settings.familyTarget || DEFAULTS.familyTarget;
   const start = settings.startDate || today;
+  const on = new Set(settings.habits || HABITS);
 
   // Family: memories added per day.
   const family = new Map();
@@ -143,17 +144,17 @@ export function ledger(raw, settings, today, from) {
     const day = {
       date: d,
       tracked,
-      family: { required: tracked, count: fam, target, done: fam >= target },
+      family: { required: tracked && on.has("family"), count: fam, target, done: fam >= target },
       garden: {
-        required: gardenOn,
+        required: gardenOn && on.has("garden"),
         planted: plantedToday,
         called: calledToday,
         waiting: plantedToday.filter((n) => !calledToday.includes(n)),
         done: calledToday.length > 0,
       },
-      nights: { required: tracked, count: Math.min(3, checkedOn.get(d) || 0), done: nightsDone.has(d) },
-      workout: { required: tracked, count: w.length, types: [...new Set(w)], done: w.length > 0 },
-      dailylog: { required: tracked, entries: logs.get(d) || [], done: (logs.get(d) || []).length > 0 },
+      nights: { required: tracked && on.has("nights"), count: Math.min(3, checkedOn.get(d) || 0), done: nightsDone.has(d) },
+      workout: { required: tracked && on.has("workout"), count: w.length, types: [...new Set(w)], done: w.length > 0 },
+      dailylog: { required: tracked && on.has("dailylog"), entries: logs.get(d) || [], done: (logs.get(d) || []).length > 0 },
     };
     if (day.nights.done) day.nights.count = 3;
     day.open = HABITS.filter((h) => day[h].required && !day[h].done);
